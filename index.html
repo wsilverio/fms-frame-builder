@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>CAN J1939 Frame Builder</title>
+    <style>
+        :root {
+            --bg: #eef0f4;
+            --surface: #ffffff;
+            --border: #c2c8d4;
+            --text: #111827;
+            --muted: #6b7280;
+            --accent: #2563eb;
+            --accent-light: #eff4ff;
+            --danger: #ef4444;
+            --danger-light: #fef2f2;
+            --mono: 'SF Mono', ui-monospace, 'Cascadia Code', Menlo, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
+            font-size: 14px;
+            padding: 40px;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+        }
+
+        h2 {
+            margin: 0 0 4px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        h3 {
+            margin: 0 0 14px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--muted);
+        }
+
+        .page-header {
+            margin-bottom: 28px;
+        }
+
+        .page-header p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.875rem;
+        }
+
+        .field-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .field label {
+            font-size: 0.7rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+        }
+
+        .row {
+            margin-bottom: 16px;
+        }
+
+        .canid-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 24px;
+            padding: 10px 14px;
+            background: var(--accent-light);
+            border: 1px solid #c7d9ff;
+            border-radius: 8px;
+            width: fit-content;
+        }
+
+        .canid-row span {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        #canid {
+            font-family: var(--mono);
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        input[type="text"] {
+            width: 90px;
+            padding: 7px 10px;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            background: var(--surface);
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 0.8rem;
+            transition: border-color 0.12s, box-shadow 0.12s;
+        }
+
+        input[type="text"].invalid {
+            border-color: var(--danger);
+            background: var(--danger-light);
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .byte {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .byte-label {
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            color: var(--muted);
+            width: 48px;
+            flex-shrink: 0;
+        }
+
+        .bits {
+            display: flex;
+            gap: 4px;
+        }
+
+        .bits label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            font-family: var(--mono);
+            font-size: 0.65rem;
+            color: var(--muted);
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.1s, border-color 0.1s, color 0.1s;
+            user-select: none;
+        }
+
+        .bits label:has(input:checked) {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        .bits label:hover {
+            border-color: var(--accent);
+        }
+
+        .bits input[type="checkbox"] {
+            display: none;
+        }
+
+        .container {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+
+        .box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+        }
+
+        .editor-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .editor-row label {
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            color: var(--muted);
+            width: 60px;
+        }
+
+        button {
+            padding: 7px 14px;
+            border-radius: 7px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text);
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.12s, border-color 0.12s;
+        }
+
+        button:hover {
+            background: var(--bg);
+            border-color: #c4c9d4;
+        }
+
+        .output-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .output-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+        }
+
+        #output {
+            font-family: var(--mono);
+            font-size: 0.875rem;
+            font-weight: 500;
+            background: var(--bg);
+            color: var(--text);
+            padding: 8px 12px;
+            border-radius: 7px;
+            border: 1px solid var(--border);
+            display: inline-block;
+            letter-spacing: 0.05em;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="page-header">
+        <h2>J1939 CAN Frame Builder</h2>
+        <p>Build and inspect CAN frames for J1939 protocol</p>
+    </div>
+
+    <div class="row field-row">
+        <div class="field">
+            <label>PGN</label>
+            <input type="text" id="pgn" value="0xFEF1">
+        </div>
+        <div class="field">
+            <label>Priority</label>
+            <input type="text" id="priority" value="6">
+        </div>
+        <div class="field">
+            <label>SA</label>
+            <input type="text" id="sa" value="0x00">
+        </div>
+    </div>
+
+    <div class="canid-row">
+        <span>CAN ID</span>
+        <span id="canid"></span>
+    </div>
+
+    <div class="container">
+
+        <div class="box">
+            <h3>Bit Editor</h3>
+            <div id="bitEditor"></div>
+        </div>
+
+        <div class="box">
+            <h3>Byte Editor</h3>
+            <div id="byteEditor"></div>
+        </div>
+
+        <div class="box">
+            <h3>Uint16 — Little Endian</h3>
+            <div id="u16Editor"></div>
+        </div>
+
+    </div>
+
+    <div class="output-row">
+        <span class="output-label">cansend</span>
+        <div id="output"></div>
+        <button onclick="copyOutput()">Copy</button>
+        <button onclick="clearData()">Clear</button>
+    </div>
+
+    <script>
+        const bytes = new Uint8Array(8).fill(0xFF);
+
+        let focusedByteIndex = -1;
+        let focusedU16Index = -1;
+
+        const byteInputs = [];
+        const u16Inputs = [];
+
+        function hex(n, pad = 2) {
+            return n.toString(16).toUpperCase().padStart(pad, '0');
+        }
+
+        function parseNum(v) {
+            v = v.trim();
+            if (v.startsWith("0x") || v.startsWith("0X")) return parseInt(v.slice(2), 16);
+            if (v.startsWith("0b") || v.startsWith("0B")) return parseInt(v.slice(2), 2);
+            return parseInt(v, 10);
+        }
+
+        function computeCanId() {
+            const pgn = parseNum(document.getElementById('pgn').value);
+            const priority = parseNum(document.getElementById('priority').value);
+            const sa = parseNum(document.getElementById('sa').value);
+            return ((priority << 26) | (pgn << 8) | sa) >>> 0;
+        }
+
+        function buildBitEditor() {
+            const container = document.getElementById('bitEditor');
+            container.innerHTML = '';
+
+            bytes.forEach((b, i) => {
+                const div = document.createElement('div');
+                div.className = 'byte';
+                div.id = `byte-row-${i}`;
+
+                let html = `<span class="byte-label">Byte ${i + 1}</span><div class="bits">`;
+                for (let bit = 7; bit >= 0; bit--) {
+                    const checked = (b >> bit) & 1 ? 'checked' : '';
+                    html += `<label>
+          <input type="checkbox" id="cb-b${i}-bit${bit}" data-byte="${i}" data-bit="${bit}" ${checked}>
+          ${bit + 1}
+        </label>`;
+                }
+                html += '</div>';
+                div.innerHTML = html;
+                container.appendChild(div);
+            });
+
+            container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                cb.onchange = (e) => {
+                    const byteIdx = +e.target.dataset.byte;
+                    const bitIdx = +e.target.dataset.bit;
+                    if (e.target.checked) {
+                        bytes[byteIdx] |= (1 << bitIdx);
+                    } else {
+                        bytes[byteIdx] &= ~(1 << bitIdx);
+                    }
+                    syncOutput();
+                    syncByteInputs();
+                    syncU16Inputs();
+                };
+            });
+        }
+
+        function buildByteEditor() {
+            const container = document.getElementById('byteEditor');
+            container.innerHTML = '';
+
+            for (let i = 0; i < 8; i++) {
+                const input = document.createElement('input');
+                input.id = `byte-input-${i}`;
+                input.type = 'text';
+                input.inputMode = 'numeric';
+                input.placeholder = '0';
+                input.value = bytes[i];
+
+                input.addEventListener('focus', () => { focusedByteIndex = i; });
+                input.addEventListener('blur', () => {
+                    focusedByteIndex = -1;
+                    input.value = bytes[i];
+                    input.classList.remove('invalid');
+                });
+
+                input.oninput = () => {
+                    const raw = input.value.trim();
+                    let val = parseNum(raw);
+                    if (raw === '' || isNaN(val)) {
+                        input.classList.add('invalid');
+                        return;
+                    }
+                    input.classList.remove('invalid');
+                    bytes[i] = Math.max(0, Math.min(255, val));
+                    syncOutput();
+                    syncBitChecks();
+                    syncU16Inputs();
+                };
+
+                const row = document.createElement('div');
+                row.className = 'editor-row';
+                const lbl = document.createElement('label');
+                lbl.textContent = `Byte ${i + 1}`;
+                row.appendChild(lbl);
+                row.appendChild(input);
+                container.appendChild(row);
+
+                byteInputs.push(input);
+            }
+        }
+
+        function buildU16Editor() {
+            const container = document.getElementById('u16Editor');
+            container.innerHTML = '';
+
+            for (let i = 0; i < 7; i++) {
+                const input = document.createElement('input');
+                input.id = `u16-input-${i}`;
+                input.type = 'text';
+                input.inputMode = 'numeric';
+                input.placeholder = '0';
+                input.value = bytes[i] | (bytes[i + 1] << 8);
+
+                input.addEventListener('focus', () => { focusedU16Index = i; });
+                input.addEventListener('blur', () => {
+                    focusedU16Index = -1;
+                    input.value = bytes[i] | (bytes[i + 1] << 8);
+                    input.classList.remove('invalid');
+                });
+
+                input.oninput = () => {
+                    const raw = input.value.trim();
+                    let v = parseNum(raw);
+                    if (raw === '' || isNaN(v)) {
+                        input.classList.add('invalid');
+                        return;
+                    }
+                    input.classList.remove('invalid');
+                    v = Math.max(0, Math.min(65535, v));
+                    bytes[i] = v & 0xFF;
+                    bytes[i + 1] = (v >> 8) & 0xFF;
+                    syncOutput();
+                    syncBitChecks();
+                    syncByteInputs();
+                };
+
+                const row = document.createElement('div');
+                row.className = 'editor-row';
+                const lbl = document.createElement('label');
+                lbl.textContent = `B${i + 1}–${i + 2}`;
+                row.appendChild(lbl);
+                row.appendChild(input);
+                container.appendChild(row);
+
+                u16Inputs.push(input);
+            }
+        }
+
+        function syncBitChecks() {
+            bytes.forEach((b, i) => {
+                for (let bit = 7; bit >= 0; bit--) {
+                    const cb = document.getElementById(`cb-b${i}-bit${bit}`);
+                    if (cb) cb.checked = !!((b >> bit) & 1);
+                }
+            });
+        }
+
+        function syncByteInputs() {
+            byteInputs.forEach((input, i) => {
+                if (i !== focusedByteIndex) input.value = bytes[i];
+            });
+        }
+
+        function syncU16Inputs() {
+            u16Inputs.forEach((input, i) => {
+                if (i !== focusedU16Index) input.value = bytes[i] | (bytes[i + 1] << 8);
+            });
+        }
+
+        function syncOutput() {
+            const canId = computeCanId();
+            const data = Array.from(bytes).map(b => hex(b)).join('');
+            document.getElementById('canid').innerText = hex(canId, 8);
+            document.getElementById('output').innerText = `${hex(canId, 8)}#${data}`;
+        }
+
+        function syncAll() {
+            syncBitChecks();
+            syncByteInputs();
+            syncU16Inputs();
+            syncOutput();
+        }
+
+        function copyOutput() {
+            navigator.clipboard.writeText(document.getElementById('output').innerText);
+        }
+
+        function clearData() {
+            bytes.fill(0xFF);
+            syncAll();
+        }
+
+        document.getElementById('pgn').oninput = syncOutput;
+        document.getElementById('priority').oninput = syncOutput;
+        document.getElementById('sa').oninput = syncOutput;
+
+        buildBitEditor();
+        buildByteEditor();
+        buildU16Editor();
+        syncOutput();
+
+    </script>
+
+</body>
+
+</html>
